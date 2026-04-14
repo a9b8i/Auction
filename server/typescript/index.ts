@@ -69,9 +69,42 @@ const app = express();
 app.use(cors({ origin: "http://localhost:5173" }));
 app.use(express.json());
 
+// Pagination defaults and limits.
+const DEFAULT_PAGE = 1;
+const DEFAULT_PAGE_SIZE = 6;
+const MAX_PAGE_SIZE = 100;
+
 // GET /api/listings
-app.get("/api/listings", (_req: Request, res: Response) => {
-	res.json(listings);
+// Accepts optional query params: ?page=1&pageSize=6
+// Returns a paginated envelope with metadata alongside the results.
+app.get("/api/listings", (req: Request, res: Response) => {
+	// --- Parse & validate query params ---
+	const rawPage = Number(req.query.page);
+	const rawPageSize = Number(req.query.pageSize);
+
+	const page = Number.isInteger(rawPage) && rawPage >= 1
+		? rawPage
+		: DEFAULT_PAGE;
+
+	const pageSize = Number.isInteger(rawPageSize) && rawPageSize >= 1
+		? Math.min(rawPageSize, MAX_PAGE_SIZE)
+		: DEFAULT_PAGE_SIZE;
+
+	// --- Slice the full listing set for the requested page ---
+	const total = listings.length;
+	const totalPages = Math.max(1, Math.ceil(total / pageSize));
+	const start = (page - 1) * pageSize;
+	const results = listings.slice(start, start + pageSize);
+
+	// --- Build the paginated response envelope ---
+	return res.json({
+		data: results,
+		page,
+		pageSize,
+		total,
+		totalPages,
+		hasMore: page < totalPages,
+	});
 });
 
 // POST /api/listings
