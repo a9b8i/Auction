@@ -37,6 +37,16 @@ interface CreateListingRequest {
 	title: string;
 }
 
+// A record of a single bid placed on a listing. Stored in-memory and keyed
+// by listing ID so we can return the full bid history for any auction.
+interface BidRecord {
+	id: string;
+	listingId: string;
+	bidder: string;
+	amount: number;
+	timestamp: string; // ISO-8601 UTC
+}
+
 // ============================================================
 // In-memory store — seeded from data/listings.json
 // ============================================================
@@ -44,6 +54,11 @@ interface CreateListingRequest {
 const listings: Listing[] = JSON.parse(
 	readFileSync(join(__dirname, "data", "listings.json"), "utf-8"),
 );
+
+// In-memory bid history, keyed by listing ID.
+// Using a Map gives O(1) lookup per listing and keeps each listing's bids
+// in insertion order (oldest → newest); the GET endpoint reverses before responding.
+const bidHistory = new Map<string, BidRecord[]>();
 
 // ============================================================
 // App
@@ -121,7 +136,7 @@ app.post("/api/listings/:id/bids", (req: Request, res: Response) => {
 			.status(400)
 			.json({ error: "Bid amount must be a positive number" });
 	}
-	
+
 	// FIX: Was `>=` which rejected valid (higher) bids. Correct operator is `<=`
 	if (bid.amount <= listing.currentBid) {
 		return res.status(400).json({
@@ -132,7 +147,37 @@ app.post("/api/listings/:id/bids", (req: Request, res: Response) => {
 	listing.currentBid = bid.amount;
 	listing.currentBidder = bid.bidder.trim();
 
+	// Record the bid in history so it can be retrieved via GET /api/listings/:id/bids.
+	const record: BidRecord = {
+		id: randomUUID(),
+		listingId: listing.id,
+		bidder: bid.bidder.trim(),
+		amount: bid.amount,
+		timestamp: new Date().toISOString(),
+	};
+	if (!bidHistory.has(listing.id)) {
+		bidHistory.set(listing.id, []);
+	}
+	bidHistory.get(listing.id)!.push(record);
+
 	return res.status(201).json(listing);
+});
+
+// GET /api/listings/:id/bids
+// Returns the bid history for a single listing in reverse chronological order
+// (newest bid first). Returns 404 if the listing doesn't exist, or an empty
+// array (200) if the listing exists but has received no bids yet.
+app.get("/api/listings/:id/bids", (req: Request, res: Response) => {
+	const listing = listings.find((l) => l.id === req.params.id);
+	if (!listing) {
+		return res
+			.status(404)
+			.json({ error: `Listing with id "${req.params.id}" not found` });
+	}
+
+	// Return bids newest-first; default to an empty array for listings with no bids.
+	const bids = bidHistory.get(listing.id) ?? [];
+	return res.json([...bids].reverse());
 });
 
 app.listen(PORT, () => {
