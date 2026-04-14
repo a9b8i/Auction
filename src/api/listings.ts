@@ -1,7 +1,8 @@
-import type { Listing } from "../types";
+import type { Bid, Listing } from "../types";
 
 export async function getListings(): Promise<Listing[]> {
 	const res = await fetch("/api/listings");
+	console.log('res1', res)
 	if (!res.ok) throw new Error("Failed to fetch listings");
 	return res.json();
 }
@@ -38,6 +39,18 @@ export async function placeBid(
 	if (!res.ok) {
 		const data = await res.json().catch(() => ({}));
 		throw new Error(data.error || data.detail || "Failed to place bid");
+	}
+	return res.json();
+}
+
+// Fetches the bid history for a listing in reverse chronological order.
+// Returns an empty array when the listing exists but has no bids.
+export async function getBidHistory(listingId: string): Promise<Bid[]> {
+	const res = await fetch(`/api/listings/${listingId}/bids`);
+	console.log('res', res)
+	if (!res.ok) {
+		const data = await res.json().catch(() => ({}));
+		throw new Error(data.error || data.detail || "Failed to fetch bid history");
 	}
 	return res.json();
 }

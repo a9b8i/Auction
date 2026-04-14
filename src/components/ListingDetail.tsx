@@ -1,5 +1,7 @@
+import { useState } from "react";
+import { getBidHistory } from "../api/listings";
 import BidForm from "./BidForm";
-import type { Listing } from "../types";
+import type { Bid, Listing } from "../types";
 
 interface Props {
 	listing: Listing;
@@ -17,6 +19,32 @@ function formatDate(iso: string): string {
 }
 
 export default function ListingDetail({ listing, onBidSuccess }: Props) {
+	const [bids, setBids] = useState<Bid[]>([]);
+	const [showHistory, setShowHistory] = useState(false);
+	const [historyLoading, setHistoryLoading] = useState(false);
+	const [historyError, setHistoryError] = useState<string | null>(null);
+
+	const toggleHistory = async () => {
+		if (showHistory) {
+			setShowHistory(false);
+			return;
+		}
+		setHistoryLoading(true);
+		setHistoryError(null);
+		try {
+			const data = await getBidHistory(listing.id);
+			console.log(data)
+			setBids(data);
+			setShowHistory(true);
+		} catch (err) {
+			setHistoryError(
+				err instanceof Error ? err.message : "Failed to load bid history",
+			);
+		} finally {
+			setHistoryLoading(false);
+		}
+	};
+
 	return (
 		<div className="listing-detail">
 			<img
@@ -62,6 +90,52 @@ export default function ListingDetail({ listing, onBidSuccess }: Props) {
 
 			{listing.status === "active" && (
 				<BidForm listing={listing} onBidSuccess={onBidSuccess} />
+			)}
+
+			<button
+				type="button"
+				className="bid-history__toggle"
+				onClick={toggleHistory}
+				disabled={historyLoading}
+			>
+				{historyLoading
+					? "Loading…"
+					: showHistory
+						? "Hide Bid History"
+						: "Show Bid History"}
+			</button>
+
+			{historyError && (
+				<div className="state-message state-message--error">
+					{historyError}
+				</div>
+			)}
+
+			{showHistory && (
+				<div className="bid-history">
+					{bids.length === 0 ? (
+						<p className="bid-history__empty">No bids have been placed yet.</p>
+					) : (
+						<table className="bid-history__table">
+							<thead>
+								<tr>
+									<th>Bidder</th>
+									<th>Amount</th>
+									<th>Time</th>
+								</tr>
+							</thead>
+							<tbody>
+								{bids.map((bid) => (
+									<tr key={bid.id}>
+										<td>{bid.bidder}</td>
+										<td>${bid.amount.toLocaleString()}</td>
+										<td>{formatDate(bid.timestamp)}</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					)}
+				</div>
 			)}
 		</div>
 	);
