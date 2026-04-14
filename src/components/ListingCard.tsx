@@ -1,24 +1,38 @@
+import React from "react";
+import { useCountdown } from "../hooks/useCountdown";
 import type { Listing } from "../types";
 
 interface Props {
 	listing: Listing;
 	isSelected: boolean;
 	onClick: () => void;
+	// Called once when the countdown reaches zero, letting the parent
+	// update the listing's status without a page refresh.
+	onExpired?: (id: string) => void;
 }
 
-function timeRemaining(endsAt: string, status: string): string {
-	if (status === "closed") return "Ended";
-	const diff = new Date(endsAt).getTime() - Date.now();
-	if (diff <= 0) return "Ended";
-	const days = Math.floor(diff / 86_400_000);
-	const hours = Math.floor((diff % 86_400_000) / 3_600_000);
-	if (days > 0) return `${days} day${days === 1 ? "" : "s"} left`;
-	if (hours > 0) return `${hours} hour${hours === 1 ? "" : "s"} left`;
-	return "Less than an hour left";
-}
+export default function ListingCard({
+	listing,
+	isSelected,
+	onClick,
+	onExpired,
+}: Props) {
+	// The hook ticks a live countdown and reports when the auction has ended.
+	const { label, expired, urgent } = useCountdown(listing.endsAt);
 
-export default function ListingCard({ listing, isSelected, onClick }: Props) {
-	const closed = listing.status === "closed";
+	// Derive the visual "closed" state from either the server-side status
+	// or the client-side countdown reaching zero.
+	const closed = listing.status === "closed" || expired;
+
+	// Notify the parent exactly once when the countdown expires so it can
+	// flip the listing to "closed" in its own state.
+	const notifiedRef = React.useRef(false);
+	React.useEffect(() => {
+		if (expired && !notifiedRef.current && listing.status !== "closed") {
+			notifiedRef.current = true;
+			onExpired?.(listing.id);
+		}
+	}, [expired, listing.id, listing.status, onExpired]);
 
 	return (
 		<div
@@ -42,9 +56,15 @@ export default function ListingCard({ listing, isSelected, onClick }: Props) {
 					Current bid: <strong>${listing.currentBid.toLocaleString()}</strong>
 				</div>
 				<div
-					className={`listing-card__time ${closed ? "listing-card__time--ended" : ""}`}
+					className={[
+						"listing-card__time",
+						closed ? "listing-card__time--ended" : "",
+						urgent ? "listing-card__time--urgent" : "",
+					]
+						.filter(Boolean)
+						.join(" ")}
 				>
-					{timeRemaining(listing.endsAt, listing.status)}
+					{closed ? "Ended" : label}
 				</div>
 			</div>
 		</div>

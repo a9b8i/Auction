@@ -181,6 +181,18 @@ body {
 	color: #999;
 }
 
+/* Urgency pulse — applied when < 5 minutes remain */
+.listing-card__time--urgent {
+	color: #c0392b;
+	font-weight: 600;
+	animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.5; }
+}
+
 /* ============================================================
    Category badges
    ============================================================ */

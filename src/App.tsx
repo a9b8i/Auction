@@ -49,6 +49,15 @@ export default function App() {
 		setListings((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
 	};
 
+	// Called by ListingCard when its countdown reaches zero.
+	// Flips the listing to "closed" client-side so the UI updates
+	// immediately without waiting for server.
+	const handleExpired = useCallback((id: string) => {
+		setListings((prev) =>
+			prev.map((l) => (l.id === id ? { ...l, status: "closed" as const } : l)),
+		);
+	}, []);
+
 	const handleListingCreated = (listing: Listing) => {
 		// New listings are appended to the store, navigate to the last page
 		// to make the new listing visible.
@@ -93,6 +102,7 @@ export default function App() {
 										listing={listing}
 										isSelected={listing.id === selectedId}
 										onClick={() => setSelectedId(listing.id)}
+										onExpired={handleExpired}
 									/>
 								))}
 							</div>
