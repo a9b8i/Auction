@@ -19,3 +19,13 @@ export interface Bid {
 	amount: number;
 	timestamp: string;
 }
+
+// Envelope returned by paginated endpoints (e.g. GET /api/listings).
+export interface PaginatedResponse<T> {
+	data: T[];
+	page: number;
+	pageSize: number;
+	total: number;
+	totalPages: number;
+	hasMore: boolean;
+}

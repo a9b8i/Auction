@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getListings } from "./api/listings";
 import CreateListingForm from "./components/CreateListingForm";
 import ListingCard from "./components/ListingCard";
 import ListingDetail from "./components/ListingDetail";
 import type { Listing } from "./types";
+
+const PAGE_SIZE = 6;
 
 export default function App() {
 	const [listings, setListings] = useState<Listing[]>([]);
@@ -12,9 +14,23 @@ export default function App() {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
-	useEffect(() => {
-		getListings()
-			.then((data) => setListings(data))
+	// Pagination state
+	const [page, setPage] = useState(1);
+	const [totalPages, setTotalPages] = useState(1);
+	const [total, setTotal] = useState(0);
+	const [hasMore, setHasMore] = useState(false);
+
+	const fetchPage = useCallback((p: number) => {
+		setLoading(true);
+		setError(null);
+		getListings(p, PAGE_SIZE)
+			.then((res) => {
+				setListings(res.data);
+				setPage(res.page);
+				setTotalPages(res.totalPages);
+				setTotal(res.total);
+				setHasMore(res.hasMore);
+			})
 			.catch((err) =>
 				setError(
 					err instanceof Error ? err.message : "Failed to load listings",
@@ -23,6 +39,10 @@ export default function App() {
 			.finally(() => setLoading(false));
 	}, []);
 
+	useEffect(() => {
+		fetchPage(1);
+	}, [fetchPage]);
+
 	const selectedListing = listings.find((l) => l.id === selectedId) ?? null;
 
 	const handleBidSuccess = (updated: Listing) => {
@@ -30,7 +50,11 @@ export default function App() {
 	};
 
 	const handleListingCreated = (listing: Listing) => {
-		setListings((prev) => [...prev, listing]);
+		// New listings are appended to the store, navigate to the last page
+		// to make the new listing visible.
+		const newTotal = total + 1;
+		const lastPage = Math.max(1, Math.ceil(newTotal / PAGE_SIZE));
+		fetchPage(lastPage);
 		setSelectedId(listing.id);
 		setShowCreateForm(false);
 	};
@@ -61,16 +85,41 @@ export default function App() {
 						<div className="state-message state-message--error">{error}</div>
 					)}
 					{!loading && !error && (
-						<div className="listing-grid">
-							{listings.map((listing) => (
-								<ListingCard
-									key={listing.id}
-									listing={listing}
-									isSelected={listing.id === selectedId}
-									onClick={() => setSelectedId(listing.id)}
-								/>
-							))}
-						</div>
+						<>
+							<div className="listing-grid">
+								{listings.map((listing) => (
+									<ListingCard
+										key={listing.id}
+										listing={listing}
+										isSelected={listing.id === selectedId}
+										onClick={() => setSelectedId(listing.id)}
+									/>
+								))}
+							</div>
+							{totalPages > 1 && (
+								<div className="pagination">
+									<button
+										type="button"
+										className="pagination__btn"
+										disabled={page <= 1}
+										onClick={() => fetchPage(page - 1)}
+									>
+										Previous
+									</button>
+									<span className="pagination__info">
+										Page {page} of {totalPages}
+									</span>
+									<button
+										type="button"
+										className="pagination__btn"
+										disabled={!hasMore}
+										onClick={() => fetchPage(page + 1)}
+									>
+										Next
+									</button>
+								</div>
+							)}
+						</>
 					)}
 				</aside>
 				<main className="panel panel--right">

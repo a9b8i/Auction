@@ -418,6 +418,47 @@ body {
 }
 
 /* ============================================================
+   Pagination
+   ============================================================ */
+.pagination {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	margin-top: 16px;
+	padding-top: 12px;
+	border-top: 1px solid #e5e5e5;
+}
+
+.pagination__btn {
+	font-size: 0.8rem;
+	font-weight: 600;
+	color: #2596be;
+	background: none;
+	border: 1px solid #2596be;
+	border-radius: 5px;
+	padding: 4px 12px;
+	cursor: pointer;
+	transition: background 0.15s, color 0.15s;
+}
+
+.pagination__btn:hover:not(:disabled) {
+	background: #2596be;
+	color: #fff;
+}
+
+.pagination__btn:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+.pagination__info {
+	font-size: 0.8rem;
+	color: #888;
+	font-weight: 500;
+}
+
+/* ============================================================
    Bid history
    ============================================================ */
 .bid-history__toggle {

@@ -1,8 +1,14 @@
-import type { Bid, Listing } from "../types";
+import type { Bid, Listing, PaginatedResponse } from "../types";
 
-export async function getListings(): Promise<Listing[]> {
-	const res = await fetch("/api/listings");
-	console.log('res1', res)
+export async function getListings(
+	page = 1,
+	pageSize = 6,
+): Promise<PaginatedResponse<Listing>> {
+	const params = new URLSearchParams({
+		page: String(page),
+		pageSize: String(pageSize),
+	});
+	const res = await fetch(`/api/listings?${params}`);
 	if (!res.ok) throw new Error("Failed to fetch listings");
 	return res.json();
 }
@@ -47,7 +53,6 @@ export async function placeBid(
 // Returns an empty array when the listing exists but has no bids.
 export async function getBidHistory(listingId: string): Promise<Bid[]> {
 	const res = await fetch(`/api/listings/${listingId}/bids`);
-	console.log('res', res)
 	if (!res.ok) {
 		const data = await res.json().catch(() => ({}));
 		throw new Error(data.error || data.detail || "Failed to fetch bid history");
