@@ -14,8 +14,11 @@ export default function BidForm({ listing, onBidSuccess }: Props) {
 	const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
 		e.preventDefault();
 		setError(null);
-
-		const data = new FormData(e.currentTarget);
+		
+		// FIX: Capture form ref now — after `await`, e.currentTarget is null
+		// because React resets it once the handler yields.
+		const form = e.currentTarget;
+		const data = new FormData(form);
 		const bidder = (data.get("bidder") as string).trim();
 		const numAmount = parseFloat(data.get("amount") as string);
 
@@ -32,7 +35,7 @@ export default function BidForm({ listing, onBidSuccess }: Props) {
 		try {
 			const updated = await placeBid(listing.id, bidder, numAmount);
 			onBidSuccess(updated);
-			e.currentTarget.reset();
+			form.reset();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to place bid");
 		} finally {
